@@ -1,0 +1,162 @@
+// ======================================
+// Proje: Dinamik Turnuva Platformu
+// Versiyon: 2.0 (Global Roller)
+// ======================================
+
+// --------------------------------------
+// ENUM (Sabit Değer Listeleri)
+// --------------------------------------
+
+// YENİ ROL SİSTEMİ: Rol doğrudan kullanıcıya atanır
+Enum UserRole {
+  ADMIN      // Sistemi yöneten
+  JUDGE      // Sadece jüridir, ASLA yarışamaz
+  CONTESTANT // Sadece yarışmacıdır, ASLA jüri olamaz
+}
+
+// Kayıt durumu
+Enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Yarışma ve Tur durumları
+Enum Status {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+// Turun puanlama metodu
+Enum ScoringType {
+  SCORING
+  RANKING
+}
+
+
+// --------------------------------------
+// TABLOLAR
+// --------------------------------------
+
+// Platforma kaydolan her bir tekil kişi
+Table User {
+  id int [pk, increment]
+  full_name varchar [not null]
+  email varchar [unique, not null]
+  password_hash varchar [not null]
+
+  // ROL BURAYA TAŞINDI:
+  role UserRole [not null] // Kullanıcının platformdaki tekil rolü
+
+  created_at timestamp [default: `now()`]
+}
+
+// "Dans Kupası" veya "Müzik Festivali" gibi her bir etkinlik
+Table Competition {
+  id int [pk, increment]
+  name varchar [not null]
+  description text
+  status Status [not null, default: 'PENDING']
+  created_at timestamp [default: `now()`]
+}
+
+// BİR KULLANICIYI BİR YARIŞMAYA KAYDEDER
+// (Artık rol bilgisi tutmuyor)
+Table CompetitionRegistration {
+  id int [pk, increment]
+  user_id int [not null] // Jüri'nin veya Yarışmacı'nın ID'si
+  competition_id int [not null]
+  status RegistrationStatus [not null, default: 'PENDING']
+
+  Indexes {
+    (user_id, competition_id) [unique] // Bir kullanıcı bir yarışmaya sadece 1 kez kaydolabilir
+  }
+}
+
+// Bir yarışmaya ait her bir aşama (Eleme, Yarı Final, Final)
+Table Round {
+  id int [pk, increment]
+  competition_id int [not null]
+  name varchar [not null]
+  round_order int [not null] // Turları sıralamak için (1, 2, 3...)
+
+  // Dinamik kurallar
+  group_size int [not null]
+  participants_to_advance int [not null]
+  scoring_type ScoringType [not null]
+
+  status Status [not null, default: 'PENDING']
+
+  Indexes {
+    (competition_id, round_order) [unique]
+  }
+}
+
+// Bir tur içindeki spesifik performans grupları
+Table PerformanceGroup {
+  id int [pk, increment]
+  round_id int [not null]
+  name varchar [not null]
+}
+
+// Hangi YARIŞMACININ hangi gruba atandığını gösterir
+Table GroupMembership {
+  id int [pk, increment]
+  group_id int [not null]
+  contestant_user_id int [not null] // Buradaki user_id'nin rolü 'CONTESTANT' olmalı
+
+  Indexes {
+    (group_id, contestant_user_id) [unique]
+  }
+}
+
+// 'SCORING' (Puanlama) tipli turlar için
+Table Score {
+  id int [pk, increment]
+  round_id int [not null]
+  judge_user_id int [not null] // Buradaki user_id'nin rolü 'JUDGE' olmalı
+  contestant_user_id int [not null] // Buradaki user_id'nin rolü 'CONTESTANT' olmalı
+  value decimal(4, 2) [not null]
+
+  Indexes {
+    (round_id, judge_user_id, contestant_user_id) [unique]
+  }
+}
+
+// 'RANKING' (Sıralama) tipli turlar için
+Table JudgeRanking {
+  id int [pk, increment]
+  round_id int [not null]
+  judge_user_id int [not null] // Buradaki user_id'nin rolü 'JUDGE' olmalı
+  contestant_user_id int [not null] // Buradaki user_id'nin rolü 'CONTESTANT' olmalı
+  rank int [not null]
+
+  Indexes {
+    (round_id, judge_user_id, contestant_user_id) [unique]
+    (round_id, judge_user_id, rank) [unique]
+  }
+}
+
+
+// --------------------------------------
+// İLİŞKİLER (REFS) - TOP LEVEL
+// --------------------------------------
+
+Ref: CompetitionRegistration.user_id > User.id
+Ref: CompetitionRegistration.competition_id > Competition.id
+
+Ref: Round.competition_id > Competition.id
+
+Ref: PerformanceGroup.round_id > Round.id
+
+Ref: GroupMembership.group_id > PerformanceGroup.id
+Ref: GroupMembership.contestant_user_id > User.id // Uygulama katmanında rolü 'CONTESTANT' mı diye kontrol edilmeli
+
+Ref: Score.round_id > Round.id
+Ref: Score.judge_user_id > User.id // Uygulama katmanında rolü 'JUDGE' mı diye kontrol edilmeli
+Ref: Score.contestant_user_id > User.id // Uygulama katmanında rolü 'CONTESTANT' mı diye kontrol edilmeli
+
+Ref: JudgeRanking.round_id > Round.id
+Ref: JudgeRanking.judge_user_id > User.id // Uygulama katmanında rolü 'JUDGE' mı diye kontrol edilmeli
+Ref: JudgeRanking.contestant_user_id > User.id // Uygulama katmanında rolü 'CONTESTANT' mı diye kontrol edilmeli
