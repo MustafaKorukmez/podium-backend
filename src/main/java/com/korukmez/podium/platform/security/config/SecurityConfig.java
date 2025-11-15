@@ -5,7 +5,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer; // Bu import'a dikkat
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer; // <-- YENİ IMPORT
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -14,10 +15,6 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    /**
-     * Şifreleri hash'lemek için kullanılacak BCrypt bean'i.
-     * Bu @Bean sayesinde bu nesneyi servislerimize @Autowired ile enjekte edebiliriz.
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -25,37 +22,26 @@ public class SecurityConfig {
 
     /**
      * Bu güvenlik filtresi SADECE "dev" profili (H2 veritabanı) aktifken çalışır.
-     * Canlı (prod) ortamda H2 Console'a erişim ASLA olmamalıdır.
      */
     @Bean
     @Profile("dev")
     public SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authz -> authz
-                        // H2 Console'a gelen TÜM isteklere izin ver
-                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/h2-console/**").permitAll() // H2 Console'a izin ver
+                        .requestMatchers("/api/**").permitAll() // /api altındaki her şeye izin ver
+                        .anyRequest().permitAll() // Geri kalan her şeye de izin ver
+                )
 
-                        // Entity'leri test ettiğimiz bu aşamada, şimdilik diğer her şeye de izin verelim
-                        .anyRequest().permitAll()
-                )
-                .csrf(csrf -> csrf
-                        // H2 Console, CSRF token'ı kullanmaz, bu yüzden o yol için kapatıyoruz
-                        .ignoringRequestMatchers("/h2-console/**")
-                )
+                // --- DÜZELTME BURADA ---
+                // "dev" profilinde CSRF'i tamamen kapatarak Postman isteklerine izin ver
+                .csrf(AbstractHttpConfigurer::disable)
+
                 .headers(headers -> headers
                         // H2 Console'un frame içinde çalışabilmesi için bu ayar şart
-                        // HATALI SATIR: .frameOptions(HeadersConfigurer.FrameOptionsConfig::SAMEORIGIN)
-                        // DÜZELTME: Metod adı 'sameOrigin' (küçük 's' ile) olmalı
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
                 );
 
         return http.build();
     }
-
-    /**
-     * Buraya daha sonra canlı (production) ortam için
-     * @Profile("prod") ile ikinci bir filter chain eklenecek.
-     * O chain H2'ye İZİN VERMEYECEK ve her şeyi koruyacak.
-     */
-
 }
