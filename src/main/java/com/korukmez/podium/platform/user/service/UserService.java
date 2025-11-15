@@ -1,5 +1,6 @@
 package com.korukmez.podium.platform.user.service;
 
+import com.korukmez.podium.platform.core.enums.UserRole;
 import com.korukmez.podium.platform.core.exception.ResourceNotFoundException;
 import com.korukmez.podium.platform.user.dto.UserCreateDTO;
 import com.korukmez.podium.platform.user.dto.UserResponseDTO;
@@ -8,6 +9,9 @@ import com.korukmez.podium.platform.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -59,6 +63,33 @@ public class UserService {
         return UserResponseDTO.fromEntity(user);
     }
 
+    /**
+     * Sistemdeki tüm JÜRİ'leri listeler.
+     */
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getAllJudges() {
+        // 1. Repository'den JUDGE rolündeki kullanıcıları çek
+        List<User> judges = userRepository.findAllByRole(UserRole.JUDGE);
+
+        // 2. Bu listeyi UserResponseDTO listesine dönüştür (şifreleri gizle)
+        return judges.stream()
+                .map(UserResponseDTO::fromEntity) // (user -> UserResponseDTO.fromEntity(user)) ile aynı
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Sistemdeki tüm YARIŞMACI'ları listeler.
+     */
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getAllContestants() {
+        // 1. Repository'den CONTESTANT rolündeki kullanıcıları çek
+        List<User> contestants = userRepository.findAllByRole(UserRole.CONTESTANT);
+
+        // 2. DTO listesine dönüştür
+        return contestants.stream()
+                .map(UserResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
     // getAllJudges() ve getAllContestants() gibi diğer metotlar da
     // buraya eklenecek...
 }
