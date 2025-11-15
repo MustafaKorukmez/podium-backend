@@ -6,11 +6,22 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer; // Bu import'a dikkat
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    /**
+     * Şifreleri hash'lemek için kullanılacak BCrypt bean'i.
+     * Bu @Bean sayesinde bu nesneyi servislerimize @Autowired ile enjekte edebiliriz.
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
     /**
      * Bu güvenlik filtresi SADECE "dev" profili (H2 veritabanı) aktifken çalışır.
