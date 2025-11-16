@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -90,6 +91,53 @@ public class UserService {
                 .map(UserResponseDTO::fromEntity)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Bir listeden toplu olarak yeni kullanıcılar oluşturur.
+     * Bu işlem 'Transactional'dir: Listeden BİRİ bile hata alırsa (örn:
+     * duplicate email), HİÇBİR kullanıcı oluşturulmaz (rollback).
+     */
+    @Transactional
+    public List<UserResponseDTO> createUsersInBatch(List<UserCreateDTO> dtoList) {
+
+        // 1. Gelen DTO listesindeki tüm email'leri bir Set'e çek
+        Set<String> emailsInRequest = dtoList.stream()
+                .map(UserCreateDTO::getEmail)
+                .collect(Collectors.toSet());
+
+        // 2. Bu email'lerden herhangi birinin veritabanında olup olmadığını TEK BİR SORGUDAYLA kontrol et
+        List<User> existingUsers = userRepository.findAllByEmailIn(emailsInRequest);
+        if (!existingUsers.isEmpty()) {
+            // Hata: Hangi email'in zaten kayıtlı olduğunu belirt
+            String duplicateEmails = existingUsers.stream()
+                    .map(User::getEmail)
+                    .collect(Collectors.joining(", "));
+            throw new IllegalStateException("Bu email(ler) zaten kayıtlı: " + duplicateEmails);
+        }
+
+        // 3. Kaydedilecek User entity'lerinin bir listesini hazırla
+        List<User> usersToSave = dtoList.stream()
+                .map(dto -> {
+                    User user = new User();
+                    user.setFullName(dto.getFullName());
+                    user.setEmail(dto.getEmail());
+
+                    // Şifreyi HASH'le
+                    user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
+                    user.setRole(dto.getRole());
+                    return user;
+                })
+                .collect(Collectors.toList());
+
+        // 4. Tüm yeni kullanıcıları veritabanına TEK BİR 'saveAll' komutuyla kaydet
+        List<User> savedUsers = userRepository.saveAll(usersToSave);
+
+        // 5. Kaydedilen entity listesini, güvenli DTO listesine çevirip dön
+        return savedUsers.stream()
+                .map(UserResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
     // getAllJudges() ve getAllContestants() gibi diğer metotlar da
     // buraya eklenecek...
 }

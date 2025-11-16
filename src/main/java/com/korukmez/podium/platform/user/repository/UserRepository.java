@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository // Spring'e bunun bir Repository olduğunu belirtir (best practice)
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -20,4 +21,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Örn: findAllByRole(UserRole.JUDGE)
      */
     List<User> findAllByRole(UserRole role);
+
+    /**
+     * Verilen email listesindeki (Set) veritabanında zaten var olan
+     * tüm kullanıcıları döndürür.
+     */
+    List<User> findAllByEmailIn(Set<String> emails);
+
 }

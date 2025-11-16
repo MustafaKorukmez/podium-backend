@@ -66,6 +66,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login").permitAll()
                         // Yeni kullanıcı oluşturma endpoint'ine izin ver
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
+                        // Yeni kullanıcı oluşturma (TOPLU) endpoint'ine izin ver
+                        .requestMatchers(HttpMethod.POST, "/api/users/batch").permitAll()
 
                         // --- KURAL GÜNCELLEMESİ ---
                         // Yukarıdakiler dışında kalan TÜM istekler kimlik doğrulaması (JWT Token) gerektirir.

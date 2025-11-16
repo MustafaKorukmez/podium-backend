@@ -79,4 +79,17 @@ public class UserController {
         List<UserResponseDTO> contestants = userService.getAllContestants();
         return ResponseEntity.ok(contestants);
     }
+
+    /**
+     * POST /api/users/batch
+     * Bir JSON dizisi alarak toplu olarak kullanıcı oluşturur.
+     */
+    @PostMapping("/batch")
+    public ResponseEntity<List<UserResponseDTO>> createBatchUsers(
+            @Valid @RequestBody List<UserCreateDTO> dtoList) {
+
+        List<UserResponseDTO> createdUsers = userService.createUsersInBatch(dtoList);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdUsers);
+    }
 }
